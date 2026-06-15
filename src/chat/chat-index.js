@@ -1,6 +1,6 @@
 import { h, render } from 'preact';
 import Chat from './chat';
-import * as store from 'store'
+import * as store from './local-store'
 
 let conf = {};
 const confString = getUrlParameter('conf');
@@ -12,10 +12,20 @@ if (confString) {
     }
 }
 
+let visitorMeta = {};
+const metaString = getUrlParameter('meta');
+if (metaString) {
+    try {
+        visitorMeta = JSON.parse(metaString);
+    } catch (e) {
+        console.log('Failed to parse meta', metaString, e);
+    }
+}
+
 render(
     <Chat
-        chatId={getUrlParameter('id')}
-        userId={getUserId()}
+        conversationId={getConversationId()}
+        visitorMeta={visitorMeta}
         host={getUrlParameter('host')}
         conf={conf}
     />,
@@ -29,14 +39,23 @@ function getUrlParameter(name) {
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 }
 
-function getUserId () {
+// Persisted in localStorage so the conversation survives reloads / browser restarts.
+// Migrates from the old 'userId' key so existing visitors keep their session.
+function getConversationId () {
     if (store.enabled) {
-        return store.get('userId') || store.set('userId', generateRandomId());
+        const existing = store.get('conversationId') || store.get('userId');
+        if (existing) {
+            store.set('conversationId', existing);
+            return existing;
+        }
+        return store.set('conversationId', generateRandomId());
     } else {
         return generateRandomId();
     }
 }
 
 function generateRandomId() {
-    return Math.random().toString(36).substr(2, 6);
+    let id = Math.random().toString(36).substr(2, 6);
+    // Optional human-readable id (e.g. Guest-ab12cd). Stays colon-free for routing.
+    return conf.humanReadableId ? 'Guest-' + id : id;
 }

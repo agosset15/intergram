@@ -1,5 +1,11 @@
-import dateFormat from 'dateformat'
 import { h, Component } from 'preact';
+
+const fmtTime = (d) => new Date(d).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', hour12: false});
+const fmtDateTime = (d) => {
+    const dt = new Date(d);
+    return dt.toLocaleDateString([], {month: 'numeric', day: 'numeric', year: '2-digit'}) +
+           ' ' + fmtTime(dt);
+};
 
 const dayInMillis = 60 * 60 * 24 * 1000;
 
@@ -29,8 +35,8 @@ export default class MessageArea extends Component {
                                     <div class="time">
                                         {
                                             currentTime - new Date(time) < dayInMillis ?
-                                                dateFormat(time, "HH:MM") :
-                                                dateFormat(time, "m/d/yy HH:MM")
+                                                fmtTime(time) :
+                                                fmtDateTime(time)
                                         }
                                     </div> 
                                     :

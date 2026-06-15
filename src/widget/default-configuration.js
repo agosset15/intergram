@@ -15,5 +15,11 @@ export const defaultConfiguration = {
     alwaysUseFloatingButton: false,
     desktopHeight: 450,
     desktopWidth: 370,
-    visitorPronoun: 'You'
+    visitorPronoun: 'You',
+    // Whitelist of GET params read from the page URL into the operator "client card".
+    // Keys not listed are ignored. Empty array disables the feature.
+    metaParams: ['uid', 'plan', 'email', 'source', 'username'],
+    maxMetaValueLength: 200, // per-value cap
+    maxMetaParams: 10,       // max number of params collected
+    humanReadableId: false   // true => conversation ids look like "Guest-ab12cd"
 };

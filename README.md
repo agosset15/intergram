@@ -44,7 +44,12 @@ Currently you can customize all visible texts and the main widget color by setti
         autoNoResponse: 'A message that is sent one minute after the user sends its first message ' +
                         'and no response was received',
         mainColor: "#E91E63", // Can be any css supported color 'red', 'rgb(255,87,34)', etc
-        alwaysUseFloatingButton: false // Use the mobile floating button also on large screens
+        alwaysUseFloatingButton: false, // Use the mobile floating button also on large screens
+        // --- Visitor "client card" (self-hosted) ---
+        metaParams: ['uid', 'plan', 'email', 'source', 'username'], // GET params read from the page URL
+        maxMetaValueLength: 200, // per-value character cap
+        maxMetaParams: 10,       // max number of params collected
+        humanReadableId: false   // true => conversation ids look like "Guest-ab12cd"
     };
 </script>
 <script id="intergram" type="text/javascript" src="https://www.intergram.xyz/js/widget.js"></script>
@@ -64,20 +69,63 @@ Currently you can customize all visible texts and the main widget color by setti
 
 2. Deploy this repo to your own chat server. 
   - Clone it locally and install or if you use Heroku, fork this repository and point the new app to it.
-  - Set an .env variable named `TELEGRAM_TOKEN` with the value you got from @BotFather
+  - Set `.env` variables:
+    - `TELEGRAM_TOKEN` — bot token from @BotFather
+    - `TELEGRAM_CHAT_ID` — your Telegram chat ID (get it in step 4 below)
 
 3. Point the bot webhook to your bot server by making a `GET` request to the following url
   `https://api.telegram.org/bot<TOKEN>/setWebhook?url=<Server url>/hook`
   (Don't forget to replace with your token and server url)
 
-4. Open a chat with your bot and hit `/start` to get your unique chat ID
+4. Open a chat with your bot and hit `/start` — the bot will print your chat ID. Set it as `TELEGRAM_CHAT_ID` env var.
 
 5. Embed this code snippet in your website
   ```html
   <script> 
-      window.intergramId = "Your unique chat ID"
       window.intergramServer = "Server url"
   </script>
   <script id="intergram" type="text/javascript" src="<Server url>/js/widget.js"></script>
   ```
 6. :tada:
+
+### Visitor "client card" from URL parameters (self-hosted)
+
+When self-hosting you can pass visitor context (plan, uid, email, ...) through the
+page URL. On the first message of a new conversation the bot server posts a **client
+card** to the operator chat, so operators see who they are talking to.
+
+```
+https://yoursite.com/pricing?uid=12345&plan=premium&email=a@b.c&source=landing
+```
+
+Operator receives:
+
+```
+🆕 New conversation
+uid: 12345
+plan: premium
+email: a@b.c
+source: landing
+```
+
+- Only keys listed in `metaParams` (client) **and** the server whitelist are used;
+  anything else (e.g. `?evil=...`) is ignored.
+- Values are length-capped and HTML-escaped before being sent to Telegram.
+- Reply routing is unchanged: reply to the card **or** to any visitor message and the
+  answer goes to that exact visitor; a plain message still broadcasts.
+- The conversation id is stored in `localStorage`, so the chat survives page reloads
+  and browser restarts (no duplicate card).
+
+#### Server environment variables (self-hosted)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TELEGRAM_TOKEN` | yes | Bot token from [@BotFather](https://telegram.me/botfather) |
+| `TELEGRAM_CHAT_ID` | yes | The single operator chat id that receives all messages (get it via `/start`) |
+| `META_PARAMS` | no | Comma list of allowed meta keys. Default: `uid,plan,email,source,username` |
+| `API_BASE` | no | External user directory. `GET {API_BASE}/users?uid=` or `?username=` must return `{ "id": ... }`; `GET {API_BASE}/users/<id>/summary` returns a plain-text summary appended to the card |
+
+> :warning: **Privacy / security:** Do **not** put sensitive data (passwords, tokens,
+> card numbers) in GET parameters — they end up in server logs, browser history, and
+> referrer headers. The whitelist is enforced **server-side** as well; never rely on
+> client filtering alone.

@@ -1,4 +1,4 @@
-import * as store from 'store'
+import * as store from './local-store'
 import io from 'socket.io-client'
 
 import { h, Component } from 'preact';
@@ -12,7 +12,7 @@ export default class Chat extends Component {
     constructor(props) {
         super(props);
         if (store.enabled) {
-            this.messagesKey = 'messages' + '.' + props.chatId + '.' + props.host;
+            this.messagesKey = 'messages' + '.' + props.conversationId + '.' + props.host;
             this.state.messages = store.get(this.messagesKey) || store.set(this.messagesKey, []);
         } else {
             this.state.messages = [];
@@ -22,10 +22,14 @@ export default class Chat extends Component {
     componentDidMount() {
         this.socket = io.connect();
         this.socket.on('connect', () => {
-            this.socket.emit('register', {chatId: this.props.chatId, userId: this.props.userId });
+            // visitorMeta is sent once, at session init only (not per message).
+            this.socket.emit('register', {
+                conversationId: this.props.conversationId,
+                visitorName: this.props.conf.visitorName,
+                visitorMeta: this.props.visitorMeta
+            });
         });
-        this.socket.on(this.props.chatId, this.incomingMessage);
-        this.socket.on(this.props.chatId+'-'+this.props.userId, this.incomingMessage);
+        this.socket.on('chat-message', this.incomingMessage);
 
         if (!this.state.messages.length) {
             this.writeToMessages({text: this.props.conf.introMessage, from: 'admin'});
@@ -51,7 +55,7 @@ export default class Chat extends Component {
     handleKeyPress = (e) => {
         if (e.keyCode == 13 && this.input.value) {
             let text = this.input.value;
-            this.socket.send({text, from: 'visitor', visitorName: this.props.conf.visitorName});
+            this.socket.emit('visitor-message', {text});
             this.input.value = '';
 
             if (this.autoResponseState === 'pristine') {
