@@ -15,9 +15,12 @@ export default class Widget extends Component {
 
     constructor() {
         super();
-        this.state.isChatOpen = false;
-        this.state.pristine = true;
-        this.state.wasChatOpened = this.wasChatOpened();
+        // preact 10: this.state is not pre-initialized — assign the whole object
+        this.state = {
+            isChatOpen: false,
+            pristine: true,
+            wasChatOpened: this.wasChatOpened()
+        };
     }
 
     render({conf, isMobile}, {isChatOpen, pristine}) {
@@ -95,18 +98,14 @@ export default class Widget extends Component {
     }
 
     getCookie = () => {
-        var nameEQ = 'chatwasopened=';
-        var ca = document.cookie.split(';');
-        for(var i=0;i < ca.length;i++) {
-            var c = ca[i];
-            while (c.charAt(0)==' ') c = c.substring(1,c.length);
-            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+        const nameEQ = 'chatwasopened=';
+        for (let c of document.cookie.split(';')) {
+            c = c.trimStart();
+            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length);
         }
         return false;
     }
 
-    wasChatOpened = () => {
-        return (this.getCookie() === false) ? false : true;
-    }
+    wasChatOpened = () => this.getCookie() !== false
 
 }

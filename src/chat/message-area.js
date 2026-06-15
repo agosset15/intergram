@@ -1,53 +1,37 @@
-import { h, Component } from 'preact';
+import { h } from 'preact';
+import { useEffect } from 'preact/hooks';
 
-const fmtTime = (d) => new Date(d).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', hour12: false});
+const fmtTime = (d) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 const fmtDateTime = (d) => {
     const dt = new Date(d);
-    return dt.toLocaleDateString([], {month: 'numeric', day: 'numeric', year: '2-digit'}) +
-           ' ' + fmtTime(dt);
+    return dt.toLocaleDateString([], { month: 'numeric', day: 'numeric', year: '2-digit' }) + ' ' + fmtTime(dt);
 };
 
-const dayInMillis = 60 * 60 * 24 * 1000;
+const DAY_MS = 60 * 60 * 24 * 1000;
 
-export default class MessageArea extends Component {
-
-    componentDidMount() {
+export default function MessageArea({ messages, conf }) {
+    useEffect(() => {
         window.scrollTo(0, document.body.scrollHeight);
-    }
+    }, [messages]);
 
-    componentDidUpdate() {
-        window.scrollTo(0, document.body.scrollHeight);
-    }
-
-    render(props,{}) {
-        const currentTime = new Date();
-        return (
-            <ol class="chat">
-                {props.messages.map(({name, text, from, time}) => {
-                    if (from === 'visitor') {
-                        name = props.conf.visitorPronoun;
-                    }
-                    return (
-                        <li class={from}>
-                            <div class="msg">
-                                <p>{name ? name + ': ' + text : text}</p>
-                                { (props.conf.displayMessageTime) ?
-                                    <div class="time">
-                                        {
-                                            currentTime - new Date(time) < dayInMillis ?
-                                                fmtTime(time) :
-                                                fmtDateTime(time)
-                                        }
-                                    </div> 
-                                    :
-                                    ''
-                                }
-                            </div>
-                        </li>
-                    );
-                })}
-            </ol>
-        );
-    }
-
+    const now = new Date();
+    return (
+        <ol class="chat">
+            {messages.map(({ name, text, from, time }) => {
+                const displayName = from === 'visitor' ? conf.visitorPronoun : name;
+                return (
+                    <li class={from}>
+                        <div class="msg">
+                            <p>{displayName ? displayName + ': ' + text : text}</p>
+                            {conf.displayMessageTime && (
+                                <div class="time">
+                                    {now - new Date(time) < DAY_MS ? fmtTime(time) : fmtDateTime(time)}
+                                </div>
+                            )}
+                        </div>
+                    </li>
+                );
+            })}
+        </ol>
+    );
 }

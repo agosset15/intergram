@@ -11,16 +11,18 @@ export default class Chat extends Component {
 
     constructor(props) {
         super(props);
+        // preact 10: this.state is not pre-initialized — assign the whole object
+        let messages = [];
         if (store.enabled) {
             this.messagesKey = 'messages' + '.' + props.conversationId + '.' + props.host;
-            this.state.messages = store.get(this.messagesKey) || store.set(this.messagesKey, []);
-        } else {
-            this.state.messages = [];
+            messages = store.get(this.messagesKey) || store.set(this.messagesKey, []);
         }
+        this.state = { messages };
     }
 
     componentDidMount() {
-        this.socket = io.connect();
+        const basePath = window.location.pathname.replace(/\/[^/]*$/, '');
+        this.socket = io({ path: (basePath || '') + '/socket.io' });
         this.socket.on('connect', () => {
             // visitorMeta is sent once, at session init only (not per message).
             this.socket.emit('register', {
@@ -44,16 +46,12 @@ export default class Chat extends Component {
                 <input class="textarea" type="text" placeholder={this.props.conf.placeholderText}
                        ref={(input) => { this.input = input }}
                        onKeyPress={this.handleKeyPress}/>
-
-                <a class="banner" href="https://github.com/idoco/intergram" target="_blank">
-                    Powered by <b>Intergram</b>&nbsp;
-                </a>
             </div>
         );
     }
 
     handleKeyPress = (e) => {
-        if (e.keyCode == 13 && this.input.value) {
+        if (e.key === 'Enter' && this.input.value) {
             let text = this.input.value;
             this.socket.emit('visitor-message', {text});
             this.input.value = '';

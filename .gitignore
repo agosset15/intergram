@@ -9,6 +9,7 @@ dist/
 
 # jetbrains folder:
 .idea/
+.claude
 
 # npm log:
 npm-debug.log*

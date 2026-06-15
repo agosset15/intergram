@@ -1,29 +1,30 @@
-const compression = require('compression');
 const cors = require('cors');
 const express = require('express');
 const app = express();
 const http = require('http').Server(app);
-const io = require('socket.io')(http);
 const Redis = require('ioredis');
 const { createAdapter } = require('@socket.io/redis-adapter');
 
-app.use(express.static('dist', {index: 'demo.html', maxage: '4h'}));
+// --- Base path (e.g. BASE_PATH=/support to serve under /support) ---
+const BASE = (process.env.BASE_PATH || '').replace(/\/+$/, '');
+
+const io = require('socket.io')(http, { path: BASE + '/socket.io' });
+
 app.use(express.json());
+app.use(BASE || '/', express.static('dist'));
 
 // --- Configuration ---
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-const API_BASE = process.env.API_BASE;
-const META_WHITELIST = (process.env.META_PARAMS || 'uid,plan,email,source,username')
+const META_WHITELIST = (process.env.META_PARAMS || 'plan,email,tgid,source,username')
     .split(',').map(s => s.trim()).filter(Boolean);
 const MAX_META_VALUE_LENGTH = 200;
 const MAX_META_PARAMS = 10;
 const SESSION_PREFIX = 'ig:session:';
 const SESSION_TTL = 7 * 24 * 3600; // 7 days
 
-// --- Redis setup (graceful: fall back to in-memory if Redis is unavailable) ---
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const memSessions = new Map(); // fallback when Redis is down
+const memSessions = new Map();
 let redisOk = false;
 
 const pubClient = new Redis(REDIS_URL, {
@@ -98,35 +99,10 @@ function sanitizeMeta(rawMeta) {
     return clean;
 }
 
-async function fetchUserSummary(meta) {
-    if (!API_BASE) return '';
-    const query = meta.uid ? ('uid=' + encodeURIComponent(meta.uid))
-        : meta.username ? ('username=' + encodeURIComponent(meta.username))
-            : null;
-    if (!query) return '';
-    try {
-        const userRes = await fetch(API_BASE + '/users?' + query);
-        if (!userRes.ok) return '';
-        const user = await userRes.json();
-        const id = user && user.id;
-        if (!id) return '';
-        const sumRes = await fetch(API_BASE + '/users/' + encodeURIComponent(id) + '/summary');
-        if (!sumRes.ok) return '';
-        return (await sumRes.text()) || '';
-    } catch (e) {
-        console.error('API_BASE fetch failed', e.message);
-        return '';
-    }
-}
-
-function buildCard(conversationId, meta, summary) {
+function buildCard(conversationId, meta) {
     const lines = ['🆕 <b>New conversation</b>'];
     for (const key of Object.keys(meta)) {
         lines.push(escapeHtml(key) + ': ' + escapeHtml(meta[key]));
-    }
-    if (summary) {
-        lines.push('');
-        lines.push(escapeHtml(summary.slice(0, 1000)));
     }
     return conversationId + ': ' + lines.join('\n');
 }
@@ -137,7 +113,7 @@ function extractConversationId(replyText) {
 }
 
 // --- Telegram webhook ---
-app.post('/hook', function(req, res) {
+app.post(BASE + '/hook', function(req, res) {
     try {
         const message = req.body.message || req.body.channel_post;
         const name = message.chat.first_name || message.chat.title || 'admin';
@@ -188,8 +164,7 @@ io.on('connection', function(socket) {
             if (!s.carded) {
                 s.carded = true;
                 await setSession(conversationId, s);
-                const summary = await fetchUserSummary(s.meta);
-                sendTelegramMessage(buildCard(conversationId, s.meta, summary), 'HTML');
+                sendTelegramMessage(buildCard(conversationId, s.meta), 'HTML');
             }
             const visitorName = s.visitorName ? '[' + s.visitorName + ']: ' : '';
             sendTelegramMessage(conversationId + ': ' + visitorName + ' ' + text);
@@ -213,13 +188,13 @@ function sendTelegramMessage(text, parseMode) {
     }).catch(e => console.error('sendTelegramMessage failed', e.message));
 }
 
-app.post('/usage-start', cors(), function(req, res) {
+app.post(BASE + '/usage-start', cors(), function(req, res) {
     console.log('usage from', req.query.host);
     res.statusCode = 200;
     res.end();
 });
 
-app.post('/usage-end', cors(), function(req, res) {
+app.post(BASE + '/usage-end', cors(), function(req, res) {
     res.statusCode = 200;
     res.end();
 });

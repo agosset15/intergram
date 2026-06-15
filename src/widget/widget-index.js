@@ -9,8 +9,6 @@ if (window.attachEvent) {
 }
 
 function injectChat() {
-    // intergramId is kept for backward compat but no longer required when self-hosting
-    // with TELEGRAM_CHAT_ID set as a server env var.
     if (!window.intergramId && !window.intergramServer) {
         console.error('Please set window.intergramServer (and optionally window.intergramId) — see github.com/idoco/intergram');
         return;
@@ -18,8 +16,13 @@ function injectChat() {
     {
         let root = document.createElement('div');
         root.id = 'intergramRoot';
-        document.getElementsByTagName('body')[0].appendChild(root);
-        const server = window.intergramServer || 'https://www.intergram.xyz';
+        const mountTarget = (window.intergramContainer &&
+            (typeof window.intergramContainer === 'string'
+                ? document.querySelector(window.intergramContainer)
+                : window.intergramContainer))
+            || document.body;
+        mountTarget.appendChild(root);
+        const server = window.intergramServer;
         const iFrameSrc = server + '/chat.html';
         const host = window.location.host || 'unknown-host';
         const conf = { ...defaultConfiguration, ...window.intergramCustomizations };
