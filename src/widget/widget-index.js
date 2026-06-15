@@ -2,7 +2,12 @@ import { h, render } from 'preact';
 import Widget from './widget';
 import {defaultConfiguration} from './default-configuration';
 
-if (window.attachEvent) {
+// Run as soon as the document is ready. If the page has already finished
+// loading (e.g. injected after `load`, or after a client-side SPA navigation),
+// the `load` event will never fire again — so call injectChat immediately.
+if (document.readyState === 'complete') {
+    injectChat();
+} else if (window.attachEvent) {
     window.attachEvent('onload', injectChat);
 } else {
     window.addEventListener('load', injectChat, false);
@@ -11,6 +16,10 @@ if (window.attachEvent) {
 function injectChat() {
     if (!window.intergramId && !window.intergramServer) {
         console.error('Please set window.intergramServer (and optionally window.intergramId) — see github.com/idoco/intergram');
+        return;
+    }
+    // Guard against double injection (load fired + manual call, or remount).
+    if (document.getElementById('intergramRoot')) {
         return;
     }
     {
