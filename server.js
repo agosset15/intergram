@@ -24,6 +24,7 @@ const SESSION_PREFIX = 'ig:session:';
 const SESSION_TTL = 7 * 24 * 3600; // 7 days
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const BOTAPI_URI = process.env.BOTAPI_URI || 'https://api.telegram.org';
 const memSessions = new Map();
 let redisOk = false;
 
@@ -182,7 +183,7 @@ io.on('connection', function(socket) {
 function sendTelegramMessage(text, parseMode) {
     const body = new URLSearchParams({chat_id: TELEGRAM_CHAT_ID, text});
     if (parseMode) body.set('parse_mode', parseMode);
-    fetch('https://api.telegram.org/bot' + TELEGRAM_TOKEN + '/sendMessage', {
+    fetch(BOTAPI_URI + '/bot' + TELEGRAM_TOKEN + '/sendMessage', {
         method: 'POST',
         body
     }).catch(e => console.error('sendTelegramMessage failed', e.message));
@@ -201,8 +202,4 @@ app.post(BASE + '/usage-end', cors(), function(req, res) {
 
 http.listen(process.env.PORT || 3000, function() {
     console.log('listening on port:' + (process.env.PORT || 3000));
-});
-
-app.get('/.well-known/acme-challenge/:content', (req, res) => {
-    res.send(process.env.CERTBOT_RESPONSE);
 });
