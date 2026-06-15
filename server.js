@@ -20,57 +20,14 @@ const META_WHITELIST = (process.env.META_PARAMS || 'plan,email,tgid,source,usern
     .split(',').map(s => s.trim()).filter(Boolean);
 const MAX_META_VALUE_LENGTH = 200;
 const MAX_META_PARAMS = 10;
-const SESSION_PREFIX = 'ig:session:';
-const SESSION_TTL = 7 * 24 * 3600; // 7 days
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const memSessions = new Map();
-let redisOk = false;
-
-const pubClient = new Redis(REDIS_URL, {
-    lazyConnect: true,
-    maxRetriesPerRequest: 1,
-    enableOfflineQueue: false,
-});
-const subClient = pubClient.duplicate();
-
-Promise.all([pubClient.connect(), subClient.connect()])
-    .then(() => {
-        io.adapter(createAdapter(pubClient, subClient));
-        redisOk = true;
-        console.log('Redis connected: ' + REDIS_URL);
-    })
-    .catch(err => {
-        console.warn('Redis unavailable, using in-memory sessions:', err.message);
-    });
-
-pubClient.on('error', err => {
-    if (redisOk) console.warn('Redis error:', err.message);
-    redisOk = false;
-});
-pubClient.on('ready', () => {
-    redisOk = true;
-    io.adapter(createAdapter(pubClient, subClient));
-    console.log('Redis reconnected');
-});
 
 async function getSession(conversationId) {
-    if (redisOk) {
-        try {
-            const raw = await pubClient.get(SESSION_PREFIX + conversationId);
-            return raw ? JSON.parse(raw) : null;
-        } catch (e) { /* fall through */ }
-    }
     return memSessions.get(conversationId) || null;
 }
 
 async function setSession(conversationId, session) {
-    if (redisOk) {
-        try {
-            await pubClient.set(SESSION_PREFIX + conversationId, JSON.stringify(session), 'EX', SESSION_TTL);
-            return;
-        } catch (e) { /* fall through */ }
-    }
     memSessions.set(conversationId, session);
 }
 
@@ -120,13 +77,7 @@ app.post(BASE + '/hook', function(req, res) {
         const text = message.text || '';
         const reply = message.reply_to_message;
 
-        if (text.startsWith('/start')) {
-            console.log('/start from chatId ' + message.chat.id);
-            sendTelegramMessage(
-                '*Intergram connected*\nThis chat will receive visitor messages.\n' +
-                'Reply to a message to answer that visitor; send a plain message to broadcast.',
-                'Markdown');
-        } else if (reply) {
+        if (reply) {
             const conversationId = extractConversationId(reply.text);
             io.to(conversationId).emit('chat-message', {name, text, from: 'admin'});
         } else if (text) {
