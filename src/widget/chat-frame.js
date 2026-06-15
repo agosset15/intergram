@@ -14,8 +14,7 @@ export default class ChatFrame extends Component {
             <iframe
                 src={iFrameSrc + '?id=' + intergramId + '&host=' + host + '&conf=' + encodedConf + '&meta=' + encodedMeta}
                 width="100%"
-                height={isMobile ? '94%' : '100%'}
-                frameBorder="0"
+                height={(isMobile && !conf.hideCloser) ? '94%' : '100%'}
             />
         );
     }

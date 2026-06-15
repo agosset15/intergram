@@ -13,21 +13,32 @@ import {
 
 export default class Widget extends Component {
 
-    constructor() {
-        super();
+    constructor(props) {
+        super(props);
         // preact 10: this.state is not pre-initialized — assign the whole object
+        const hideCloser = !!(props.conf && props.conf.hideCloser);
         this.state = {
-            isChatOpen: false,
-            pristine: true,
+            isChatOpen: hideCloser,   // webview mode: start open
+            pristine: !hideCloser,    // and render the iframe immediately
             wasChatOpened: this.wasChatOpened()
         };
     }
 
     render({conf, isMobile}, {isChatOpen, pristine}) {
 
+        // Webview mode: fullscreen chat only, no close/toggle button.
+        if (conf.hideCloser) {
+            return (
+                <div style={mobileOpenWrapperStyle}>
+                    <div style={{ height: '100%' }}>
+                        <ChatFrame {...this.props} />
+                    </div>
+                </div>
+            );
+        }
+
         const wrapperWidth = {width: conf.desktopWidth};
         const desktopHeight = (window.innerHeight - 100 < conf.desktopHeight) ? window.innerHeight - 90 : conf.desktopHeight;
-        const wrapperHeight = {height: desktopHeight};
 
         let wrapperStyle;
         if (!isChatOpen && (isMobile || conf.alwaysUseFloatingButton)) {

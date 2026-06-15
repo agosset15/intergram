@@ -16,6 +16,10 @@ export const defaultConfiguration = {
     desktopHeight: 450,
     desktopWidth: 370,
     visitorPronoun: 'You',
+    // Webview mode: chat starts open and the close/toggle button is hidden, so
+    // the chat can never be closed. Fills the whole viewport. Intended for an
+    // in-app webview that shows nothing but the support chat.
+    hideCloser: false,
     // Whitelist of GET params read from the page URL into the operator "client card".
     // Keys not listed are ignored. Empty array disables the feature.
     metaParams: ['uid', 'plan', 'email', 'source', 'username'],
