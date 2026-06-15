@@ -1,4 +1,4 @@
-import { h } from 'preact';
+import { h, Fragment } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 
 const fmtTime = (d) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -12,21 +12,21 @@ const DAY_MS = 60 * 60 * 24 * 1000;
 export default function MessageArea({ messages, conf }) {
     const bottomRef = useRef(null);
 
+    // messages is mutated in place (push), so ref stays the same — track length instead
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'instant' });
-    }, [messages]);
+    }, [messages.length]);
 
     const now = new Date();
     return (
-        <div>
+        <Fragment>
             <ol class="chat">
                 {messages.map(({ name, text, from, time }) => {
                     const isAdmin = from === 'admin';
-                    const displayName = isAdmin ? name : null;
                     return (
                         <li class={from}>
                             <div class="msg">
-                                {displayName && <div class="msg-sender">{displayName}</div>}
+                                {isAdmin && name && <div class="msg-sender">{name}</div>}
                                 <p>{text}</p>
                                 {conf.displayMessageTime && (
                                     <div class="time">
@@ -39,6 +39,6 @@ export default function MessageArea({ messages, conf }) {
                 })}
             </ol>
             <div ref={bottomRef} />
-        </div>
+        </Fragment>
     );
 }
