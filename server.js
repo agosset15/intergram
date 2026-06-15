@@ -103,7 +103,7 @@ function sanitizeMeta(rawMeta) {
 function buildCard(conversationId, meta) {
     const lines = ['🆕 <b>New conversation</b>'];
     for (const key of Object.keys(meta)) {
-        lines.push(escapeHtml(key) + ': ' + escapeHtml(meta[key]));
+        lines.push(escapeHtml(key) + ': <code>' + escapeHtml(meta[key]) + "</code>");
     }
     return conversationId + ': ' + lines.join('\n');
 }
